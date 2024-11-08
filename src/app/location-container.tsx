@@ -11,24 +11,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface LocationData {
-  latitude: number;
-  longitude: number;
-  city?: string;
-  region?: string;
-  postalCode?: string;
-}
+import { Geo } from "@vercel/functions";
 
 export default function Component() {
   const [consentGiven, setConsentGiven] = useState(false);
-  const [geoIPData, setGeoIPData] = useState<LocationData | null>(null);
-  const [browserLocationData, setBrowserLocationData] =
-    useState<LocationData | null>(null);
+  const [geoIPData, setGeoIPData] = useState<Geo | null>(null);
+  const [browserLocationData, setBrowserLocationData] = useState<Geo | null>(
+    null
+  );
   const [distance, setDistance] = useState<number | null>(null);
 
   const getGeoIPLocation = async () => {
     const response = await fetch("/api/location", {
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
       },
@@ -43,8 +38,8 @@ export default function Component() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setBrowserLocationData({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
           });
         },
         (error) => {
@@ -82,13 +77,21 @@ export default function Component() {
   };
 
   const updateDistance = () => {
-    if (geoIPData && browserLocationData) {
+    if (
+      geoIPData &&
+      browserLocationData &&
+      geoIPData.latitude &&
+      geoIPData.longitude &&
+      browserLocationData.latitude &&
+      browserLocationData.longitude
+    ) {
       const dist = calculateDistance(
-        geoIPData.latitude,
-        geoIPData.longitude,
-        browserLocationData.latitude,
-        browserLocationData.longitude
+        parseFloat(geoIPData.latitude),
+        parseFloat(geoIPData.longitude),
+        parseFloat(browserLocationData.latitude),
+        parseFloat(browserLocationData.longitude)
       );
+
       setDistance(dist);
     }
   };
@@ -103,14 +106,10 @@ export default function Component() {
       <div className="space-y-4">
         <h1 className="text-xl font-semibold">Location Comparison Tool</h1>
         <p>
-          This tool compares your location obtained via geo IP and your
-          browser&lsquo;s location API.
-        </p>
-        <p>
           This tool demonstrates the difference between location data obtained
-          through geo IP (based on your network) and the browser&lsquo;s
-          built-in geolocation API (which can use GPS, Wi-Fi, or cellular data
-          for more accurate results).
+          through geo IP (based on your network through Vercel) and the
+          browser&lsquo;s built-in geolocation API (which can use GPS, Wi-Fi, or
+          cellular data for more accurate results).
         </p>
         <h2 className="text-lg font-semibold">Potential Privacy Issues:</h2>
         <ul className="list-disc pl-5 space-y-2">
@@ -165,17 +164,19 @@ export default function Component() {
             <TableRow>
               <TableCell>City</TableCell>
               <TableCell>{geoIPData?.city || "N/A"}</TableCell>
-              <TableCell>N/A</TableCell>
+              <TableCell></TableCell>
             </TableRow>
             <TableRow>
               <TableCell>Region</TableCell>
-              <TableCell>{geoIPData?.region || "N/A"}</TableCell>
-              <TableCell>N/A</TableCell>
+              <TableCell>{geoIPData?.countryRegion || "N/A"}</TableCell>
+              <TableCell></TableCell>
             </TableRow>
             <TableRow>
-              <TableCell>Postal Code</TableCell>
-              <TableCell>{geoIPData?.postalCode || "N/A"}</TableCell>
-              <TableCell>N/A</TableCell>
+              <TableCell>Country</TableCell>
+              <TableCell>
+                {geoIPData?.flag} {geoIPData?.country || "N/A"}
+              </TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableBody>
         </Table>
